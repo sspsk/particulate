@@ -204,8 +204,11 @@ def main(args):
     model.eval()
     
     # Load weights
-    print("Downloading/Loading model from Hugging Face...")
-    model_checkpoint = hf_hub_download(repo_id="rayli/Particulate", filename=f"model.pt")
+    print("Loading model from checkpoint...")
+    if args.ckpt_path is None:
+        model_checkpoint = hf_hub_download(repo_id="rayli/Particulate", filename=f"model.pt")
+    else:
+        model_checkpoint = args.ckpt_path
     model.load_state_dict(torch.load(model_checkpoint, map_location="cpu"))
     model.to("cuda")
     
@@ -358,5 +361,6 @@ if __name__ == "__main__":
     parser.add_argument("--export_urdf", action="store_true", help="Export URDF")
     parser.add_argument("--export_mjcf", action="store_true", help="Export MJCF")
     parser.add_argument("--eval", action="store_true", help="Save results for evaluation")
+    parser.add_argument("--ckpt_path", type=str, default=None, help="Path to model checkpoint")
     args = parser.parse_args()
     main(args)

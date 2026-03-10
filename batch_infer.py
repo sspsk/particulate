@@ -109,7 +109,7 @@ def infer_single_asset(
             min_part_confidence=min_part_confidence
         )
     
-    return outputs, face_indices, mesh_transformed
+    return outputs, face_indices, mesh_transformed, inputs
 
 
 def save_articulated_meshes(mesh, face_indices, outputs, output_path, strict, animation_frames: int = 50, hyp_idx: int = 0, save_name: str = None):
@@ -204,7 +204,7 @@ def infer_single_mesh(mesh_path, output_dir, model, args):    # Load mesh
             
     # Run inference
     print("Running inference...")
-    outputs, face_indices, mesh_transformed = infer_single_asset(
+    outputs, face_indices, mesh_transformed, inputs = infer_single_asset(
         mesh=mesh,
         up_dir=args.up_dir,
         model=model,
@@ -233,7 +233,19 @@ def infer_single_mesh(mesh_path, output_dir, model, args):    # Load mesh
         animation_frames=args.animation_frames,
         save_name=timestamp
     )
-        
+    np.savez(os.path.join(output_dir, "results.npz"),
+            points=inputs['xyz'].cpu().numpy().squeeze(0),
+            part_ids=outputs[0]['part_ids'],
+            motion_hierarchy=motion_hierarchy,
+            is_part_revolute=is_part_revolute,
+            is_part_prismatic=is_part_prismatic,
+            revolute_plucker=revolute_plucker,
+            revolute_range=revolute_range,
+            prismatic_axis=prismatic_axis,
+            prismatic_range=prismatic_range,
+            closest_points=outputs[0]['closest_point_on_axis']
+        )
+
     # Export URDF
     if args.export_urdf:
         urdf_output_path = os.path.join(output_dir, f"urdf_{timestamp}", "model.urdf")
@@ -368,11 +380,11 @@ def main(args):
         input_meshes, output_dirs = [args.input_mesh], [Path(args.output_dir)]
 
     for input_mesh, output_dir in tqdm(zip(input_meshes, output_dirs), total=len(input_meshes), desc="Processing meshes"):
-        try:
-            infer_single_mesh(input_mesh, output_dir, model, args)
-        except Exception as e:
-            print(f"Error processing {input_mesh}: {e}")
-            continue
+        #try:
+        infer_single_mesh(input_mesh, output_dir, model, args)
+        #except Exception as e:
+        #    print(f"Error processing {input_mesh}: {e}")
+        #    continue
 
 
 if __name__ == "__main__":

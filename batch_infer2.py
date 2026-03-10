@@ -32,7 +32,7 @@ torch.serialization.add_safe_globals([CfgNode])
 torch.random.manual_seed(42)
 
 DATA_CONFIG = {
-    'sharp_point_ratio': 0.5,
+    'sharp_point_ratio': 0.0,
     'normalize_points': True
 }
 
@@ -109,7 +109,7 @@ def infer_single_asset(
             min_part_confidence=min_part_confidence
         )
     
-    return outputs, face_indices, mesh_transformed
+    return outputs, face_indices, mesh_transformed,inputs
 
 
 def save_articulated_meshes(mesh, face_indices, outputs, output_path, strict, animation_frames: int = 50, hyp_idx: int = 0, save_name: str = None):
@@ -204,7 +204,7 @@ def infer_single_mesh(mesh_path, output_dir, model, args):    # Load mesh
             
     # Run inference
     print("Running inference...")
-    outputs, face_indices, mesh_transformed = infer_single_asset(
+    outputs, face_indices, mesh_transformed, inputs = infer_single_asset(
         mesh=mesh,
         up_dir=args.up_dir,
         model=model,
@@ -233,6 +233,18 @@ def infer_single_mesh(mesh_path, output_dir, model, args):    # Load mesh
         animation_frames=args.animation_frames,
         save_name=timestamp
     )
+    np.savez(os.path.join(output_dir, "results.npz"),
+            points=inputs['xyz'].cpu().numpy().squeeze(0),
+            part_ids=outputs[0]['part_ids'],
+            motion_hierarchy=motion_hierarchy,
+            is_part_revolute=is_part_revolute,
+            is_part_prismatic=is_part_prismatic,
+            revolute_plucker=revolute_plucker,
+            revolute_range=revolute_range,
+            prismatic_axis=prismatic_axis,
+            prismatic_range=prismatic_range,
+            closest_points=outputs[0]['closest_point_on_axis']
+        )
         
     # Export URDF
     if args.export_urdf:
@@ -375,7 +387,6 @@ def main(args):
         except Exception as e:
             print(f"Error processing {input_mesh}: {e}")
             continue
-        break
 
 
 if __name__ == "__main__":
